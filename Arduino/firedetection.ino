@@ -11,7 +11,7 @@
 DHT dht(DHTPIN, DHTTYPE);
 
 float temperature;
-int smokeValue;
+int smokeValue;   
 int flameValue;
 
 void setup() {
