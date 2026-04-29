@@ -11,8 +11,7 @@ This project detects potential fire risks using IoT sensors and machine learning
 
 ## Hardware
 
-- Arduino UNO / ESP32
-- Flame Sensor
+- Arduino UNO 
 - MQ2 Smoke Sensor
 - DHT11 Temperature Sensor
 - Buzzer
