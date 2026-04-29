@@ -1,55 +1,47 @@
-
 #include <DHT.h>
 
 #define DHTPIN 2
 #define DHTTYPE DHT11
 
-#define FLAME_SENSOR 3
-#define SMOKE_SENSOR A0
+#define MQ2 A0
 #define BUZZER 8
 
 DHT dht(DHTPIN, DHTTYPE);
 
-float temperature;
-int smokeValue;   
-int flameValue;
+// Thresholds (adjust if needed)
+float tempThreshold = 50.0;
+int smokeThreshold = 280;
 
 void setup() {
-
   Serial.begin(9600);
-
-  pinMode(FLAME_SENSOR, INPUT);
   pinMode(BUZZER, OUTPUT);
-
   dht.begin();
 }
 
 void loop() {
+  float temperature = dht.readTemperature();
+  int smokeValue = analogRead(MQ2);
 
-  temperature = dht.readTemperature();
-  smokeValue = analogRead(SMOKE_SENSOR);
-  flameValue = digitalRead(FLAME_SENSOR);
-
-  Serial.print("Temperature: ");
-  Serial.println(temperature);
-
-  Serial.print("Smoke Level: ");
-  Serial.println(smokeValue);
-
-  Serial.print("Flame Status: ");
-  Serial.println(flameValue);
-
-  if (temperature > 50 || smokeValue > 400 || flameValue == LOW) {
-
-    Serial.println("🔥 FIRE RISK DETECTED");
-    digitalWrite(BUZZER, HIGH);
-
-  } else {
-
-    Serial.println("SAFE");
-    digitalWrite(BUZZER, LOW);
-
+  // Read data from Python (webcam)
+  char data = '0';
+  if (Serial.available()) {
+    data = Serial.read();
   }
 
-  delay(2000);
+  // Debug output
+  Serial.print("Temp: ");
+  Serial.print(temperature);
+  Serial.print(" | Smoke: ");
+  Serial.print(smokeValue);
+  Serial.print(" | Cam: ");
+  Serial.println(data);
+
+  // 🔥 FINAL DECISION
+  if (temperature > tempThreshold || smokeValue > smokeThreshold || data == '1') {
+    tone(BUZZER, 1000);   // ALERT
+  } else {
+    noTone(BUZZER);
+  }
+
+  delay(1);
 }
