@@ -1,43 +1,58 @@
+import cv2
+import numpy as np
+import serial
+import time
 
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+arduino = serial.Serial('COM3', 9600)
+time.sleep(2)
 
-# Load dataset
-data = pd.read_csv("fire_dataset.csv")
+cap = cv2.VideoCapture(0)
 
-# Features
-X = data[['temperature','smoke','gas','flame']]
+fire_count = 0
 
-# Label
-y = data['fire']
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
 
-# Split dataset
-X_train, X_test, y_train, y_test = train_test_split(
-X, y, test_size=0.2, random_state=42
-)
+    # Resize for better detection of small flames
+    frame = cv2.resize(frame, (640, 480))
 
-# Model
-model = RandomForestClassifier(n_estimators=100)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-# Train
-model.fit(X_train, y_train)
+    # 🔥 Improved fire color range (detects matchstick better)
+    lower = np.array([0, 100, 100])
+    upper = np.array([40, 255, 255])
 
-# Prediction
-predictions = model.predict(X_test)
+    mask = cv2.inRange(hsv, lower, upper)
 
-# Accuracy
-accuracy = accuracy_score(y_test, predictions)
+    # Remove noise
+    kernel = np.ones((5,5), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    mask = cv2.GaussianBlur(mask, (9,9), 0)
 
-print("Model Accuracy:", accuracy)
+    # Count fire pixels
+    fire_pixels = np.sum(mask > 0)
 
-# Test prediction
-sample = [[60,500,300,1]]
+    # 🔥 Lower threshold for small flames
+    if fire_pixels > 8000:
+        fire_count += 1
+    else:
+        fire_count = 0
 
-result = model.predict(sample)
+    # Stability check
+    if fire_count > 3:
+        print("🔥 FIRE DETECTED")
+        arduino.write(b'1')
+    else:
+        arduino.write(b'0')
 
-if result[0] == 1:
-    print("🔥 FIRE RISK")
-else:
-    print("SAFE")
+    # Show output
+    cv2.imshow("Camera", frame)
+    cv2.imshow("Mask", mask)
+
+    if cv2.waitKey(1) & 0xFF == 27:
+        break
+
+cap.release()
+cv2.destroyAllWindows()
